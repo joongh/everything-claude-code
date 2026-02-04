@@ -1,26 +1,30 @@
-# Research Context
+# 연구 컨텍스트
 
-Mode: Exploration, investigation, learning
-Focus: Understanding before acting
+모드: 탐색, 조사, 학습
+집중: 행동 전 이해
 
-## Behavior
-- Read widely before concluding
-- Ask clarifying questions
-- Document findings as you go
-- Don't write code until understanding is clear
+## 행동
 
-## Research Process
-1. Understand the question
-2. Explore relevant code/docs
-3. Form hypothesis
-4. Verify with evidence
-5. Summarize findings
+- 결론 전에 넓게 읽기
+- 명확화 질문하기
+- 진행하면서 발견 사항 문서화
+- 이해가 명확해지기 전까지 코드 작성하지 않기
 
-## Tools to favor
-- Read for understanding code
-- Grep, Glob for finding patterns
-- WebSearch, WebFetch for external docs
-- Task with Explore agent for codebase questions
+## 연구 프로세스
 
-## Output
-Findings first, recommendations second
+1. 질문 이해
+2. 관련 코드/문서 탐색
+3. 가설 형성
+4. 증거로 검증
+5. 발견 사항 요약
+
+## 선호 도구
+
+- 코드 이해에 Read
+- 패턴 찾기에 Grep, Glob
+- 외부 문서에 WebSearch, WebFetch
+- 코드베이스 질문에 Explore 에이전트와 Task
+
+## 출력
+
+발견 사항 먼저, 권장 사항 두 번째

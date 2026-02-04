@@ -1,277 +1,297 @@
 # Everything Claude Code
 
-**The complete collection of Claude Code configs from an Anthropic hackathon winner.**
+**Spring Boot/Kotlin/Java 백엔드 개발자를 위한 Claude Code 설정 모음**
 
-Production-ready agents, skills, hooks, commands, rules, and MCP configurations evolved over 10+ months of intensive daily use building real products.
+10개월 이상의 실제 프로덕션 개발 경험을 통해 발전시킨 에이전트, 스킬, 훅, 명령어, 규칙 및 MCP 설정입니다.
 
 ---
 
-## The Guides
+## 가이드
 
-This repo is the raw code only. The guides explain everything.
+이 저장소는 설정 코드만 포함합니다. 가이드에서 모든 것을 설명합니다.
 
-### Start Here: The Shorthand Guide
+### 시작하기: 간략 가이드
 
 <img width="592" height="445" alt="image" src="https://github.com/user-attachments/assets/1a471488-59cc-425b-8345-5245c7efbcef" />
 
 **[The Shorthand Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2012378465664745795)**
 
-The foundation - what each config type does, how to structure your setup, context window management, and the philosophy behind these configs. **Read this first.**
+기초 - 각 설정 유형의 역할, 설정 구조화 방법, 컨텍스트 윈도우 관리, 이 설정들의 철학. **먼저 읽으세요.**
 
 ---
 
-### Then: The Longform Guide
+### 그 다음: 상세 가이드
 
 <img width="609" height="428" alt="image" src="https://github.com/user-attachments/assets/c9ca43bc-b149-427f-b551-af6840c368f0" />
 
 **[The Longform Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2014040193557471352)**
 
-The advanced techniques - token optimization, memory persistence across sessions, verification loops & evals, parallelization strategies, subagent orchestration, and continuous learning. Everything in this guide has working code in this repo.
+고급 기술 - 토큰 최적화, 세션 간 메모리 지속, 검증 루프 및 평가, 병렬화 전략, 서브에이전트 오케스트레이션, 지속적 학습.
 
-| Topic | What You'll Learn |
-|-------|-------------------|
-| Token Optimization | Model selection, system prompt slimming, background processes |
-| Memory Persistence | Hooks that save/load context across sessions automatically |
-| Continuous Learning | Auto-extract patterns from sessions into reusable skills |
-| Verification Loops | Checkpoint vs continuous evals, grader types, pass@k metrics |
-| Parallelization | Git worktrees, cascade method, when to scale instances |
-| Subagent Orchestration | The context problem, iterative retrieval pattern |
-
+| 주제 | 배울 내용 |
+|------|----------|
+| 토큰 최적화 | 모델 선택, 시스템 프롬프트 최소화, 백그라운드 프로세스 |
+| 메모리 지속 | 세션 간 컨텍스트 자동 저장/로드 훅 |
+| 지속적 학습 | 세션에서 패턴 자동 추출하여 재사용 가능한 스킬로 |
+| 검증 루프 | 체크포인트 vs 연속 평가, 그레이더 유형, pass@k 메트릭 |
+| 병렬화 | Git worktrees, cascade 방법, 인스턴스 확장 시점 |
+| 서브에이전트 오케스트레이션 | 컨텍스트 문제, 반복적 검색 패턴 |
 
 ---
 
-## What's Inside
+## 포함 내용
 
 ```
 everything-claude-code/
-|-- agents/           # Specialized subagents for delegation
-|   |-- planner.md           # Feature implementation planning
-|   |-- architect.md         # System design decisions
-|   |-- tdd-guide.md         # Test-driven development
-|   |-- code-reviewer.md     # Quality and security review
-|   |-- security-reviewer.md # Vulnerability analysis
-|   |-- build-error-resolver.md
-|   |-- e2e-runner.md        # Playwright E2E testing
-|   |-- refactor-cleaner.md  # Dead code cleanup
-|   |-- doc-updater.md       # Documentation sync
-|
-|-- skills/           # Workflow definitions and domain knowledge
-|   |-- coding-standards.md         # Language best practices
-|   |-- backend-patterns.md         # API, database, caching patterns
-|   |-- frontend-patterns.md        # React, Next.js patterns
-|   |-- continuous-learning/        # Auto-extract patterns from sessions (Longform Guide)
-|   |-- strategic-compact/          # Manual compaction suggestions (Longform Guide)
-|   |-- tdd-workflow/               # TDD methodology
-|   |-- security-review/            # Security checklist
-|
-|-- commands/         # Slash commands for quick execution
-|   |-- tdd.md              # /tdd - Test-driven development
-|   |-- plan.md             # /plan - Implementation planning
-|   |-- e2e.md              # /e2e - E2E test generation
-|   |-- code-review.md      # /code-review - Quality review
-|   |-- build-fix.md        # /build-fix - Fix build errors
-|   |-- refactor-clean.md   # /refactor-clean - Dead code removal
-|   |-- learn.md            # /learn - Extract patterns mid-session (Longform Guide)
-|
-|-- rules/            # Always-follow guidelines
-|   |-- security.md         # Mandatory security checks
-|   |-- coding-style.md     # Immutability, file organization
-|   |-- testing.md          # TDD, 80% coverage requirement
-|   |-- git-workflow.md     # Commit format, PR process
-|   |-- agents.md           # When to delegate to subagents
-|   |-- performance.md      # Model selection, context management
-|
-|-- hooks/            # Trigger-based automations
-|   |-- hooks.json                # All hooks config (PreToolUse, PostToolUse, Stop, etc.)
-|   |-- memory-persistence/       # Session lifecycle hooks (Longform Guide)
-|   |   |-- pre-compact.sh        # Save state before compaction
-|   |   |-- session-start.sh      # Load previous context
-|   |   |-- session-end.sh        # Persist learnings on end
-|   |-- strategic-compact/        # Compaction suggestions (Longform Guide)
-|
-|-- contexts/         # Dynamic system prompt injection contexts (Longform Guide)
-|   |-- dev.md              # Development mode context
-|   |-- review.md           # Code review mode context
-|   |-- research.md         # Research/exploration mode context
-|
-|-- examples/         # Example configurations and sessions
-|   |-- CLAUDE.md           # Example project-level config
-|   |-- user-CLAUDE.md      # Example user-level config
-|   |-- sessions/           # Example session log files (Longform Guide)
-|
-|-- mcp-configs/      # MCP server configurations
-|   |-- mcp-servers.json    # GitHub, Supabase, Vercel, Railway, etc.
-|
-|-- plugins/          # Plugin ecosystem documentation
-    |-- README.md           # Plugins, marketplaces, skills guide
+├── agents/           # 위임을 위한 전문 서브에이전트
+│   ├── planner.md              # 기능 구현 계획
+│   ├── architect.md            # 시스템 설계 결정
+│   ├── tdd-guide.md            # 테스트 주도 개발 (JUnit5, MockK)
+│   ├── code-reviewer.md        # 품질 및 보안 리뷰
+│   ├── security-reviewer.md    # 취약점 분석
+│   ├── build-error-resolver.md # Gradle/Kotlin 빌드 에러 해결
+│   ├── gradle-build-resolver.md # Gradle 빌드 전문
+│   ├── spring-test-guide.md    # Spring Boot 테스트 가이드
+│   ├── refactor-cleaner.md     # 데드 코드 정리
+│   └── doc-updater.md          # 문서 동기화
+│
+├── skills/           # 워크플로우 정의 및 도메인 지식
+│   ├── coding-standards.md          # Kotlin/Java 모범 사례
+│   ├── backend-patterns.md          # Spring Boot API, DB, 캐싱 패턴
+│   ├── spring-boot-patterns.md      # Controller/Service/Repository 패턴
+│   ├── kotlin-patterns.md           # Null safety, data class, 코루틴
+│   ├── jooq-querydsl-patterns.md    # 타입 안전 쿼리 패턴
+│   ├── spring-batch-patterns.md     # Job/Step 설계, Chunk 처리
+│   ├── spring-security-patterns.md  # 인증/인가, JWT, Method Security
+│   ├── continuous-learning/         # 세션에서 패턴 자동 추출
+│   └── strategic-compact/           # 수동 압축 제안
+│
+├── commands/         # 빠른 실행을 위한 슬래시 명령어
+│   ├── tdd.md              # /tdd - 테스트 주도 개발
+│   ├── plan.md             # /plan - 구현 계획
+│   ├── code-review.md      # /code-review - 품질 리뷰
+│   ├── build-fix.md        # /build-fix - Gradle 빌드 에러 수정
+│   ├── gradle-build.md     # /gradle-build - Gradle 빌드 실행
+│   ├── spring-test.md      # /spring-test - Spring Boot 테스트
+│   ├── test-coverage.md    # /test-coverage - JaCoCo 커버리지
+│   ├── refactor-clean.md   # /refactor-clean - 데드 코드 제거
+│   └── learn.md            # /learn - 세션 중 패턴 추출
+│
+├── rules/            # 항상 따라야 할 가이드라인
+│   ├── security.md         # 필수 보안 체크, Spring Security
+│   ├── coding-style.md     # Kotlin 불변성, 파일 구성
+│   ├── testing.md          # TDD, 80% 커버리지, JUnit5/MockK
+│   ├── git-workflow.md     # 커밋 형식, PR 프로세스
+│   ├── agents.md           # 서브에이전트 위임 시점
+│   └── performance.md      # 모델 선택, 컨텍스트 관리
+│
+├── hooks/            # 트리거 기반 자동화
+│   ├── hooks.json                # 모든 훅 설정
+│   ├── memory-persistence/       # 세션 라이프사이클 훅
+│   │   ├── pre-compact.sh        # 압축 전 상태 저장
+│   │   ├── session-start.sh      # 이전 컨텍스트 로드
+│   │   └── session-end.sh        # 종료 시 학습 내용 저장
+│   └── strategic-compact/        # 압축 제안
+│
+├── contexts/         # 동적 시스템 프롬프트 주입 컨텍스트
+│   ├── kotlin-dev.md         # Kotlin 개발 컨텍스트
+│   ├── spring-boot-dev.md    # Spring Boot 개발 컨텍스트
+│   ├── dev.md                # 개발 모드 컨텍스트
+│   ├── review.md             # 코드 리뷰 모드 컨텍스트
+│   └── research.md           # 연구/탐색 모드 컨텍스트
+│
+├── examples/         # 예제 설정 및 세션
+│   ├── CLAUDE.md             # 예제 프로젝트 설정
+│   ├── user-CLAUDE.md        # 예제 사용자 설정
+│   └── sessions/             # 예제 세션 로그 파일
+│
+├── mcp-configs/      # MCP 서버 설정
+│   └── mcp-servers.json      # GitHub, PostgreSQL, Redis, Railway 등
+│
+└── plugins/          # 플러그인 생태계 문서
+    └── README.md             # 플러그인, 마켓플레이스, 스킬 가이드
 ```
 
 ---
 
-## Quick Start
+## 빠른 시작
 
-### 1. Copy what you need
+### 1. 필요한 것 복사
 
 ```bash
-# Clone the repo
+# 저장소 클론
 git clone https://github.com/affaan-m/everything-claude-code.git
 
-# Copy agents to your Claude config
+# 에이전트를 Claude 설정에 복사
 cp everything-claude-code/agents/*.md ~/.claude/agents/
 
-# Copy rules
+# 규칙 복사
 cp everything-claude-code/rules/*.md ~/.claude/rules/
 
-# Copy commands
+# 명령어 복사
 cp everything-claude-code/commands/*.md ~/.claude/commands/
 
-# Copy skills
+# 스킬 복사
 cp -r everything-claude-code/skills/* ~/.claude/skills/
+
+# 컨텍스트 복사
+cp everything-claude-code/contexts/*.md ~/.claude/contexts/
 ```
 
-### 2. Add hooks to settings.json
+### 2. hooks를 settings.json에 추가
 
-Copy the hooks from `hooks/hooks.json` to your `~/.claude/settings.json`.
+`hooks/hooks.json`의 훅을 `~/.claude/settings.json`에 복사합니다.
 
-### 3. Configure MCPs
+### 3. MCP 설정
 
-Copy desired MCP servers from `mcp-configs/mcp-servers.json` to your `~/.claude.json`.
+`mcp-configs/mcp-servers.json`에서 원하는 MCP 서버를 `~/.claude.json`에 복사합니다.
 
-**Important:** Replace `YOUR_*_HERE` placeholders with your actual API keys.
+**중요:** `YOUR_*_HERE` 플레이스홀더를 실제 API 키로 교체하세요.
 
-### 4. Read the guides
+### 4. 가이드 읽기
 
-Seriously, read the guides. These configs make 10x more sense with context.
+정말로, 가이드를 읽으세요. 컨텍스트와 함께 이 설정들이 10배 더 이해됩니다.
 
-1. **[Shorthand Guide](https://x.com/affaanmustafa/status/2012378465664745795)** - Setup and foundations
-2. **[Longform Guide](https://x.com/affaanmustafa/status/2014040193557471352)** - Advanced techniques (token optimization, memory persistence, evals, parallelization)
+1. **[간략 가이드](https://x.com/affaanmustafa/status/2012378465664745795)** - 설정 및 기초
+2. **[상세 가이드](https://x.com/affaanmustafa/status/2014040193557471352)** - 고급 기술 (토큰 최적화, 메모리 지속, 평가, 병렬화)
 
 ---
 
-## Key Concepts
+## 핵심 개념
 
-### Agents
+### 대상 기술 스택
 
-Subagents handle delegated tasks with limited scope. Example:
+이 설정은 다음 기술 스택을 위해 최적화되어 있습니다:
+
+- **언어:** Kotlin, Java
+- **프레임워크:** Spring Boot, Spring Batch
+- **빌드:** Gradle (Kotlin DSL)
+- **데이터베이스:** jOOQ, QueryDSL, Spring Data JPA
+- **테스트:** JUnit5, MockK, TestContainers
+- **보안:** Spring Security, JWT
+
+### 에이전트
+
+서브에이전트는 제한된 범위의 위임된 작업을 처리합니다. 예시:
 
 ```markdown
 ---
-name: code-reviewer
-description: Reviews code for quality, security, and maintainability
-tools: Read, Grep, Glob, Bash
+name: build-error-resolver
+description: Gradle/Kotlin 빌드 에러 해결 전문가
+tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
 ---
 
-You are a senior code reviewer...
+Gradle, Kotlin, Java 빌드 및 컴파일 에러를 해결하는 전문가입니다...
 ```
 
-### Skills
+### 스킬
 
-Skills are workflow definitions invoked by commands or agents:
+스킬은 명령어나 에이전트가 호출하는 워크플로우 정의입니다:
 
 ```markdown
-# TDD Workflow
+# Spring Boot 패턴
 
-1. Define interfaces first
-2. Write failing tests (RED)
-3. Implement minimal code (GREEN)
-4. Refactor (IMPROVE)
-5. Verify 80%+ coverage
+## 계층 구조
+
+Controller → Service → Repository → Database
+
+### Controller
+- HTTP 요청/응답 처리
+- 입력 검증 (@Valid)
+- ResponseEntity 반환
+
+### Service
+- 비즈니스 로직
+- @Transactional 관리
+- 예외 처리
 ```
 
-### Hooks
+### 훅
 
-Hooks fire on tool events. Example - warn about console.log:
+훅은 도구 이벤트에서 실행됩니다. 예시 - Kotlin 파일에서 println 경고:
 
 ```json
 {
-  "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+  "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.kt$\"",
   "hooks": [{
     "type": "command",
-    "command": "#!/bin/bash\ngrep -n 'console\\.log' \"$file_path\" && echo '[Hook] Remove console.log' >&2"
+    "command": "#!/bin/bash\ngrep -n 'println' \"$file_path\" && echo '[Hook] Remove println statements' >&2"
   }]
 }
 ```
 
-### Rules
+### 규칙
 
-Rules are always-follow guidelines. Keep them modular:
+규칙은 항상 따라야 할 가이드라인입니다. 모듈화하세요:
 
 ```
 ~/.claude/rules/
-  security.md      # No hardcoded secrets
-  coding-style.md  # Immutability, file limits
-  testing.md       # TDD, coverage requirements
+  security.md      # 하드코딩된 비밀 금지, Spring Security
+  coding-style.md  # Kotlin 불변성, 파일 제한
+  testing.md       # TDD, JUnit5, 커버리지 요구사항
 ```
 
 ---
 
-## Contributing
+## 기여
 
-**Contributions are welcome and encouraged.**
+**기여를 환영하고 권장합니다.**
 
-This repo is meant to be a community resource. If you have:
-- Useful agents or skills
-- Clever hooks
-- Better MCP configurations
-- Improved rules
+이 저장소는 커뮤니티 리소스입니다. 다음이 있다면:
+- 유용한 에이전트나 스킬
+- 영리한 훅
+- 더 나은 MCP 설정
+- 개선된 규칙
 
-Please contribute! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+기여해 주세요! 가이드라인은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
 
-### Ideas for Contributions
+### 기여 아이디어
 
-- Language-specific skills (Python, Go, Rust patterns)
-- Framework-specific configs (Django, Rails, Laravel)
-- DevOps agents (Kubernetes, Terraform, AWS)
-- Testing strategies (different frameworks)
-- Domain-specific knowledge (ML, data engineering, mobile)
-
----
-
-## Background
-
-I've been using Claude Code since the experimental rollout. Won the Anthropic x Forum Ventures hackathon in Sep 2025 building [zenith.chat](https://zenith.chat) with [@DRodriguezFX](https://x.com/DRodriguezFX) - entirely using Claude Code.
-
-These configs are battle-tested across multiple production applications.
+- 언어별 스킬 (Python, Go, Rust 패턴)
+- 프레임워크별 설정 (Django, Rails, Laravel)
+- DevOps 에이전트 (Kubernetes, Terraform, AWS)
+- 테스트 전략 (다양한 프레임워크)
+- 도메인별 지식 (ML, 데이터 엔지니어링, 모바일)
 
 ---
 
-## Important Notes
+## 중요 사항
 
-### Context Window Management
+### 컨텍스트 윈도우 관리
 
-**Critical:** Don't enable all MCPs at once. Your 200k context window can shrink to 70k with too many tools enabled.
+**중요:** 모든 MCP를 한 번에 활성화하지 마세요. 너무 많은 도구가 활성화되면 200k 컨텍스트 윈도우가 70k로 줄어들 수 있습니다.
 
-Rule of thumb:
-- Have 20-30 MCPs configured
-- Keep under 10 enabled per project
-- Under 80 tools active
+경험칙:
+- 20-30개 MCP 설정
+- 프로젝트당 10개 미만 활성화
+- 80개 미만 도구 활성
 
-Use `disabledMcpServers` in project config to disable unused ones.
+사용하지 않는 것은 프로젝트 설정의 `disabledMcpServers`로 비활성화하세요.
 
-### Customization
+### 커스터마이제이션
 
-These configs work for my workflow. You should:
-1. Start with what resonates
-2. Modify for your stack
-3. Remove what you don't use
-4. Add your own patterns
+이 설정은 제 워크플로우에 맞습니다. 다음을 권장합니다:
+1. 공감되는 것부터 시작
+2. 자신의 스택에 맞게 수정
+3. 사용하지 않는 것 제거
+4. 자신만의 패턴 추가
 
 ---
 
-## Links
+## 링크
 
-- **Shorthand Guide (Start Here):** [The Shorthand Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2012378465664745795)
-- **Longform Guide (Advanced):** [The Longform Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2014040193557471352)
-- **Follow:** [@affaanmustafa](https://x.com/affaanmustafa)
+- **간략 가이드 (시작):** [The Shorthand Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2012378465664745795)
+- **상세 가이드 (고급):** [The Longform Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2014040193557471352)
+- **팔로우:** [@affaanmustafa](https://x.com/affaanmustafa)
 - **zenith.chat:** [zenith.chat](https://zenith.chat)
 
 ---
 
-## License
+## 라이선스
 
-MIT - Use freely, modify as needed, contribute back if you can.
+MIT - 자유롭게 사용하고, 필요에 따라 수정하고, 가능하면 기여해 주세요.
 
 ---
 
-**Star this repo if it helps. Read both guides. Build something great.**
+**도움이 되었다면 스타를 눌러주세요. 두 가이드를 읽으세요. 멋진 것을 만드세요.**

@@ -1,345 +1,273 @@
-# Project Guidelines Skill (Example)
+# 프로젝트 가이드라인 스킬 (예시)
 
-This is an example of a project-specific skill. Use this as a template for your own projects.
+이것은 프로젝트별 스킬의 예시입니다. 자신의 프로젝트 템플릿으로 사용하세요.
 
-Based on a real production application: [Zenith](https://zenith.chat) - AI-powered customer discovery platform.
-
----
-
-## When to Use
-
-Reference this skill when working on the specific project it's designed for. Project skills contain:
-- Architecture overview
-- File structure
-- Code patterns
-- Testing requirements
-- Deployment workflow
+실제 프로덕션 애플리케이션 기반: [Zenith](https://zenith.chat) - AI 기반 고객 발굴 플랫폼.
 
 ---
 
-## Architecture Overview
+## 사용 시점
 
-**Tech Stack:**
-- **Frontend**: Next.js 15 (App Router), TypeScript, React
-- **Backend**: FastAPI (Python), Pydantic models
-- **Database**: Supabase (PostgreSQL)
-- **AI**: Claude API with tool calling and structured output
-- **Deployment**: Google Cloud Run
-- **Testing**: Playwright (E2E), pytest (backend), React Testing Library
+이 스킬을 참조할 때: 해당 프로젝트에서 작업할 때. 프로젝트 스킬에 포함되는 내용:
+- 아키텍처 개요
+- 파일 구조
+- 코드 패턴
+- 테스트 요구사항
+- 배포 워크플로우
 
-**Services:**
+---
+
+## 아키텍처 개요
+
+**기술 스택:**
+- **백엔드**: Spring Boot 3.2 (Kotlin)
+- **데이터베이스**: PostgreSQL + jOOQ
+- **캐시**: Redis
+- **빌드**: Gradle (Kotlin DSL)
+- **테스트**: JUnit5, MockK, TestContainers
+
+**서비스:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Frontend                            │
-│  Next.js 15 + TypeScript + TailwindCSS                     │
-│  Deployed: Vercel / Cloud Run                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                         Backend                             │
-│  FastAPI + Python 3.11 + Pydantic                          │
-│  Deployed: Cloud Run                                       │
+│                         API Server                          │
+│  Spring Boot 3.2 + Kotlin + jOOQ                           │
+│  배포: Kubernetes / Docker                                  │
 └─────────────────────────────────────────────────────────────┘
                               │
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
         ┌──────────┐   ┌──────────┐   ┌──────────┐
-        │ Supabase │   │  Claude  │   │  Redis   │
-        │ Database │   │   API    │   │  Cache   │
+        │PostgreSQL│   │  Redis   │   │ External │
+        │ Database │   │  Cache   │   │   APIs   │
         └──────────┘   └──────────┘   └──────────┘
 ```
 
 ---
 
-## File Structure
+## 파일 구조
 
 ```
 project/
-├── frontend/
-│   └── src/
-│       ├── app/              # Next.js app router pages
-│       │   ├── api/          # API routes
-│       │   ├── (auth)/       # Auth-protected routes
-│       │   └── workspace/    # Main app workspace
-│       ├── components/       # React components
-│       │   ├── ui/           # Base UI components
-│       │   ├── forms/        # Form components
-│       │   └── layouts/      # Layout components
-│       ├── hooks/            # Custom React hooks
-│       ├── lib/              # Utilities
-│       ├── types/            # TypeScript definitions
-│       └── config/           # Configuration
+├── src/main/kotlin/com/example/
+│   ├── config/           # 설정 클래스
+│   ├── controller/       # REST Controller
+│   ├── service/          # 비즈니스 로직
+│   ├── repository/       # 데이터 접근
+│   ├── domain/           # Entity, VO
+│   ├── dto/              # Request/Response
+│   ├── exception/        # 커스텀 예외
+│   └── util/             # 유틸리티
 │
-├── backend/
-│   ├── routers/              # FastAPI route handlers
-│   ├── models.py             # Pydantic models
-│   ├── main.py               # FastAPI app entry
-│   ├── auth_system.py        # Authentication
-│   ├── database.py           # Database operations
-│   ├── services/             # Business logic
-│   └── tests/                # pytest tests
+├── src/main/resources/
+│   ├── application.yml
+│   ├── application-dev.yml
+│   ├── application-prod.yml
+│   └── db/migration/     # Flyway 마이그레이션
 │
-├── deploy/                   # Deployment configs
-├── docs/                     # Documentation
-└── scripts/                  # Utility scripts
+├── src/test/kotlin/com/example/
+│   ├── controller/       # Controller 테스트
+│   ├── service/          # Service 테스트
+│   └── integration/      # 통합 테스트
+│
+├── build.gradle.kts
+└── docker-compose.yml
 ```
 
 ---
 
-## Code Patterns
+## 코드 패턴
 
-### API Response Format (FastAPI)
+### API 응답 형식 (Kotlin)
 
-```python
-from pydantic import BaseModel
-from typing import Generic, TypeVar, Optional
-
-T = TypeVar('T')
-
-class ApiResponse(BaseModel, Generic[T]):
-    success: bool
-    data: Optional[T] = None
-    error: Optional[str] = None
-
-    @classmethod
-    def ok(cls, data: T) -> "ApiResponse[T]":
-        return cls(success=True, data=data)
-
-    @classmethod
-    def fail(cls, error: str) -> "ApiResponse[T]":
-        return cls(success=False, error=error)
-```
-
-### Frontend API Calls (TypeScript)
-
-```typescript
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-async function fetchApi<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  try {
-    const response = await fetch(`/api${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    })
-
-    if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}` }
-    }
-
-    return await response.json()
-  } catch (error) {
-    return { success: false, error: String(error) }
-  }
-}
-```
-
-### Claude AI Integration (Structured Output)
-
-```python
-from anthropic import Anthropic
-from pydantic import BaseModel
-
-class AnalysisResult(BaseModel):
-    summary: str
-    key_points: list[str]
-    confidence: float
-
-async def analyze_with_claude(content: str) -> AnalysisResult:
-    client = Anthropic()
-
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250514",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": content}],
-        tools=[{
-            "name": "provide_analysis",
-            "description": "Provide structured analysis",
-            "input_schema": AnalysisResult.model_json_schema()
-        }],
-        tool_choice={"type": "tool", "name": "provide_analysis"}
-    )
-
-    # Extract tool use result
-    tool_use = next(
-        block for block in response.content
-        if block.type == "tool_use"
-    )
-
-    return AnalysisResult(**tool_use.input)
-```
-
-### Custom Hooks (React)
-
-```typescript
-import { useState, useCallback } from 'react'
-
-interface UseApiState<T> {
-  data: T | null
-  loading: boolean
-  error: string | null
-}
-
-export function useApi<T>(
-  fetchFn: () => Promise<ApiResponse<T>>
+```kotlin
+data class ApiResponse<T>(
+    val success: Boolean,
+    val data: T? = null,
+    val error: String? = null
 ) {
-  const [state, setState] = useState<UseApiState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  })
-
-  const execute = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }))
-
-    const result = await fetchFn()
-
-    if (result.success) {
-      setState({ data: result.data!, loading: false, error: null })
-    } else {
-      setState({ data: null, loading: false, error: result.error! })
+    companion object {
+        fun <T> ok(data: T) = ApiResponse(success = true, data = data)
+        fun <T> fail(error: String) = ApiResponse<T>(success = false, error = error)
     }
-  }, [fetchFn])
+}
+```
 
-  return { ...state, execute }
+### Controller 패턴
+
+```kotlin
+@RestController
+@RequestMapping("/api/v1/users")
+class UserController(
+    private val userService: UserService
+) {
+    @GetMapping("/{id}")
+    fun findById(@PathVariable id: Long): ResponseEntity<ApiResponse<UserResponse>> {
+        val user = userService.findById(id)
+        return ResponseEntity.ok(ApiResponse.ok(user))
+    }
+
+    @PostMapping
+    fun create(@Valid @RequestBody request: CreateUserRequest): ResponseEntity<ApiResponse<UserResponse>> {
+        val user = userService.create(request)
+        return ResponseEntity.created(URI.create("/api/v1/users/${user.id}"))
+            .body(ApiResponse.ok(user))
+    }
+}
+```
+
+### Service 패턴
+
+```kotlin
+@Service
+@Transactional(readOnly = true)
+class UserService(
+    private val userRepository: UserRepository
+) {
+    fun findById(id: Long): UserResponse {
+        val user = userRepository.findByIdOrNull(id)
+            ?: throw UserNotFoundException(id)
+        return UserResponse.from(user)
+    }
+
+    @Transactional
+    fun create(request: CreateUserRequest): UserResponse {
+        // 비즈니스 로직
+        val user = userRepository.save(request.toEntity())
+        return UserResponse.from(user)
+    }
 }
 ```
 
 ---
 
-## Testing Requirements
+## 테스트 요구사항
 
-### Backend (pytest)
-
-```bash
-# Run all tests
-poetry run pytest tests/
-
-# Run with coverage
-poetry run pytest tests/ --cov=. --cov-report=html
-
-# Run specific test file
-poetry run pytest tests/test_auth.py -v
-```
-
-**Test structure:**
-```python
-import pytest
-from httpx import AsyncClient
-from main import app
-
-@pytest.fixture
-async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
-
-@pytest.mark.asyncio
-async def test_health_check(client: AsyncClient):
-    response = await client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
-```
-
-### Frontend (React Testing Library)
+### 백엔드 (JUnit5 + MockK)
 
 ```bash
-# Run tests
-npm run test
+# 모든 테스트 실행
+./gradlew test
 
-# Run with coverage
-npm run test -- --coverage
+# 커버리지와 함께
+./gradlew test jacocoTestReport
 
-# Run E2E tests
-npm run test:e2e
+# 특정 테스트 파일 실행
+./gradlew test --tests "UserServiceTest"
 ```
 
-**Test structure:**
-```typescript
-import { render, screen, fireEvent } from '@testing-library/react'
-import { WorkspacePanel } from './WorkspacePanel'
+**테스트 구조:**
+```kotlin
+@ExtendWith(MockKExtension::class)
+class UserServiceTest {
 
-describe('WorkspacePanel', () => {
-  it('renders workspace correctly', () => {
-    render(<WorkspacePanel />)
-    expect(screen.getByRole('main')).toBeInTheDocument()
-  })
+    @MockK
+    private lateinit var userRepository: UserRepository
 
-  it('handles session creation', async () => {
-    render(<WorkspacePanel />)
-    fireEvent.click(screen.getByText('New Session'))
-    expect(await screen.findByText('Session created')).toBeInTheDocument()
-  })
-})
+    @InjectMockKs
+    private lateinit var userService: UserService
+
+    @Test
+    fun `사용자 생성 시 비밀번호를 암호화한다`() {
+        // given
+        val request = CreateUserRequest(...)
+        every { userRepository.save(any()) } returns mockUser
+
+        // when
+        val result = userService.create(request)
+
+        // then
+        assertThat(result.email).isEqualTo(request.email)
+        verify { userRepository.save(any()) }
+    }
+}
+```
+
+### 통합 테스트 (TestContainers)
+
+```kotlin
+@SpringBootTest
+@Testcontainers
+class UserIntegrationTest {
+
+    companion object {
+        @Container
+        val postgres = PostgreSQLContainer("postgres:15")
+            .withDatabaseName("test")
+
+        @DynamicPropertySource
+        @JvmStatic
+        fun properties(registry: DynamicPropertyRegistry) {
+            registry.add("spring.datasource.url", postgres::getJdbcUrl)
+            registry.add("spring.datasource.username", postgres::getUsername)
+            registry.add("spring.datasource.password", postgres::getPassword)
+        }
+    }
+
+    @Test
+    fun `사용자 생성 및 조회`() {
+        // 통합 테스트 로직
+    }
+}
 ```
 
 ---
 
-## Deployment Workflow
+## 배포 워크플로우
 
-### Pre-Deployment Checklist
+### 사전 배포 체크리스트
 
-- [ ] All tests passing locally
-- [ ] `npm run build` succeeds (frontend)
-- [ ] `poetry run pytest` passes (backend)
-- [ ] No hardcoded secrets
-- [ ] Environment variables documented
-- [ ] Database migrations ready
+- [ ] 모든 테스트 로컬 통과
+- [ ] `./gradlew build` 성공
+- [ ] 하드코딩된 비밀 없음
+- [ ] 환경 변수 문서화됨
+- [ ] 데이터베이스 마이그레이션 준비됨
 
-### Deployment Commands
+### 배포 명령어
 
 ```bash
-# Build and deploy frontend
-cd frontend && npm run build
-gcloud run deploy frontend --source .
+# 빌드
+./gradlew bootJar
 
-# Build and deploy backend
-cd backend
-gcloud run deploy backend --source .
+# Docker 이미지 빌드
+docker build -t myapp:latest .
+
+# Docker Compose로 실행
+docker-compose up -d
 ```
 
-### Environment Variables
+### 환경 변수
 
 ```bash
-# Frontend (.env.local)
-NEXT_PUBLIC_API_URL=https://api.example.com
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+# 필수
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/myapp
+SPRING_DATASOURCE_USERNAME=
+SPRING_DATASOURCE_PASSWORD=
+JWT_SECRET=
 
-# Backend (.env)
-DATABASE_URL=postgresql://...
-ANTHROPIC_API_KEY=sk-ant-...
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_KEY=eyJ...
+# 선택
+SPRING_PROFILES_ACTIVE=dev
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
 ---
 
-## Critical Rules
+## 중요 규칙
 
-1. **No emojis** in code, comments, or documentation
-2. **Immutability** - never mutate objects or arrays
-3. **TDD** - write tests before implementation
-4. **80% coverage** minimum
-5. **Many small files** - 200-400 lines typical, 800 max
-6. **No console.log** in production code
-7. **Proper error handling** with try/catch
-8. **Input validation** with Pydantic/Zod
+1. **이모지 금지** - 코드, 주석, 문서에
+2. **불변성** - 객체나 배열 변경하지 않음
+3. **TDD** - 구현 전 테스트 작성
+4. **80% 커버리지** 최소
+5. **다수의 작은 파일** - 200-400줄 일반적, 최대 800줄
+6. **println 금지** - 프로덕션 코드에
+7. **적절한 에러 처리** - try/catch로
+8. **입력 검증** - Bean Validation으로
 
 ---
 
-## Related Skills
+## 관련 스킬
 
-- `coding-standards.md` - General coding best practices
-- `backend-patterns.md` - API and database patterns
-- `frontend-patterns.md` - React and Next.js patterns
-- `tdd-workflow/` - Test-driven development methodology
+- `coding-standards.md` - 일반 코딩 모범 사례
+- `backend-patterns.md` - API 및 데이터베이스 패턴
+- `spring-boot-patterns.md` - Spring Boot 패턴
+- `tdd-workflow/` - 테스트 주도 개발 방법론

@@ -1,582 +1,430 @@
 ---
 name: backend-patterns
-description: Backend architecture patterns, API design, database optimization, and server-side best practices for Node.js, Express, and Next.js API routes.
+description: Spring Boot 백엔드 아키텍처 패턴, API 설계, 데이터베이스 최적화 및 서버 사이드 모범 사례.
 ---
 
-# Backend Development Patterns
+# 백엔드 개발 패턴
 
-Backend architecture patterns and best practices for scalable server-side applications.
+확장 가능한 Spring Boot 서버 사이드 애플리케이션을 위한 백엔드 아키텍처 패턴과 모범 사례.
 
-## API Design Patterns
+## API 설계 패턴
 
-### RESTful API Structure
+### RESTful API 구조
 
-```typescript
-// ✅ Resource-based URLs
-GET    /api/markets                 # List resources
-GET    /api/markets/:id             # Get single resource
-POST   /api/markets                 # Create resource
-PUT    /api/markets/:id             # Replace resource
-PATCH  /api/markets/:id             # Update resource
-DELETE /api/markets/:id             # Delete resource
+```kotlin
+// ✅ 리소스 기반 URL
+GET    /api/v1/markets              # 리소스 목록
+GET    /api/v1/markets/{id}         # 단일 리소스 조회
+POST   /api/v1/markets              # 리소스 생성
+PUT    /api/v1/markets/{id}         # 리소스 전체 교체
+PATCH  /api/v1/markets/{id}         # 리소스 부분 수정
+DELETE /api/v1/markets/{id}         # 리소스 삭제
 
-// ✅ Query parameters for filtering, sorting, pagination
-GET /api/markets?status=active&sort=volume&limit=20&offset=0
+// ✅ 쿼리 파라미터로 필터링, 정렬, 페이징
+GET /api/v1/markets?status=active&sort=volume,desc&page=0&size=20
 ```
 
-### Repository Pattern
+### Controller 계층
 
-```typescript
-// Abstract data access logic
-interface MarketRepository {
-  findAll(filters?: MarketFilters): Promise<Market[]>
-  findById(id: string): Promise<Market | null>
-  create(data: CreateMarketDto): Promise<Market>
-  update(id: string, data: UpdateMarketDto): Promise<Market>
-  delete(id: string): Promise<void>
-}
-
-class SupabaseMarketRepository implements MarketRepository {
-  async findAll(filters?: MarketFilters): Promise<Market[]> {
-    let query = supabase.from('markets').select('*')
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status)
-    }
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw new Error(error.message)
-    return data
-  }
-
-  // Other methods...
-}
-```
-
-### Service Layer Pattern
-
-```typescript
-// Business logic separated from data access
-class MarketService {
-  constructor(private marketRepo: MarketRepository) {}
-
-  async searchMarkets(query: string, limit: number = 10): Promise<Market[]> {
-    // Business logic
-    const embedding = await generateEmbedding(query)
-    const results = await this.vectorSearch(embedding, limit)
-
-    // Fetch full data
-    const markets = await this.marketRepo.findByIds(results.map(r => r.id))
-
-    // Sort by similarity
-    return markets.sort((a, b) => {
-      const scoreA = results.find(r => r.id === a.id)?.score || 0
-      const scoreB = results.find(r => r.id === b.id)?.score || 0
-      return scoreA - scoreB
-    })
-  }
-
-  private async vectorSearch(embedding: number[], limit: number) {
-    // Vector search implementation
-  }
-}
-```
-
-### Middleware Pattern
-
-```typescript
-// Request/response processing pipeline
-export function withAuth(handler: NextApiHandler): NextApiHandler {
-  return async (req, res) => {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    try {
-      const user = await verifyToken(token)
-      req.user = user
-      return handler(req, res)
-    } catch (error) {
-      return res.status(401).json({ error: 'Invalid token' })
-    }
-  }
-}
-
-// Usage
-export default withAuth(async (req, res) => {
-  // Handler has access to req.user
-})
-```
-
-## Database Patterns
-
-### Query Optimization
-
-```typescript
-// ✅ GOOD: Select only needed columns
-const { data } = await supabase
-  .from('markets')
-  .select('id, name, status, volume')
-  .eq('status', 'active')
-  .order('volume', { ascending: false })
-  .limit(10)
-
-// ❌ BAD: Select everything
-const { data } = await supabase
-  .from('markets')
-  .select('*')
-```
-
-### N+1 Query Prevention
-
-```typescript
-// ❌ BAD: N+1 query problem
-const markets = await getMarkets()
-for (const market of markets) {
-  market.creator = await getUser(market.creator_id)  // N queries
-}
-
-// ✅ GOOD: Batch fetch
-const markets = await getMarkets()
-const creatorIds = markets.map(m => m.creator_id)
-const creators = await getUsers(creatorIds)  // 1 query
-const creatorMap = new Map(creators.map(c => [c.id, c]))
-
-markets.forEach(market => {
-  market.creator = creatorMap.get(market.creator_id)
-})
-```
-
-### Transaction Pattern
-
-```typescript
-async function createMarketWithPosition(
-  marketData: CreateMarketDto,
-  positionData: CreatePositionDto
+```kotlin
+@RestController
+@RequestMapping("/api/v1/markets")
+class MarketController(
+    private val marketService: MarketService
 ) {
-  // Use Supabase transaction
-  const { data, error } = await supabase.rpc('create_market_with_position', {
-    market_data: marketData,
-    position_data: positionData
-  })
+    @GetMapping
+    fun findAll(
+        @RequestParam(required = false) status: MarketStatus?,
+        @PageableDefault(size = 20) pageable: Pageable
+    ): ResponseEntity<Page<MarketResponse>> {
+        return ResponseEntity.ok(marketService.findAll(status, pageable))
+    }
 
-  if (error) throw new Error('Transaction failed')
-  return data
+    @GetMapping("/{id}")
+    fun findById(@PathVariable id: Long): ResponseEntity<MarketResponse> {
+        return ResponseEntity.ok(marketService.findById(id))
+    }
+
+    @PostMapping
+    fun create(
+        @Valid @RequestBody request: CreateMarketRequest
+    ): ResponseEntity<MarketResponse> {
+        val market = marketService.create(request)
+        val location = URI.create("/api/v1/markets/${market.id}")
+        return ResponseEntity.created(location).body(market)
+    }
+
+    @PutMapping("/{id}")
+    fun update(
+        @PathVariable id: Long,
+        @Valid @RequestBody request: UpdateMarketRequest
+    ): ResponseEntity<MarketResponse> {
+        return ResponseEntity.ok(marketService.update(id, request))
+    }
+
+    @DeleteMapping("/{id}")
+    fun delete(@PathVariable id: Long): ResponseEntity<Unit> {
+        marketService.delete(id)
+        return ResponseEntity.noContent().build()
+    }
+}
+```
+
+### Service 계층
+
+```kotlin
+@Service
+@Transactional(readOnly = true)
+class MarketService(
+    private val marketRepository: MarketRepository,
+    private val eventPublisher: ApplicationEventPublisher
+) {
+    fun findAll(status: MarketStatus?, pageable: Pageable): Page<MarketResponse> {
+        val markets = if (status != null) {
+            marketRepository.findByStatus(status, pageable)
+        } else {
+            marketRepository.findAll(pageable)
+        }
+        return markets.map { MarketResponse.from(it) }
+    }
+
+    fun findById(id: Long): MarketResponse {
+        val market = marketRepository.findByIdOrNull(id)
+            ?: throw MarketNotFoundException(id)
+        return MarketResponse.from(market)
+    }
+
+    @Transactional
+    fun create(request: CreateMarketRequest): MarketResponse {
+        val market = Market(
+            name = request.name,
+            description = request.description,
+            endDate = request.endDate
+        )
+        val saved = marketRepository.save(market)
+        eventPublisher.publishEvent(MarketCreatedEvent(saved.id!!))
+        return MarketResponse.from(saved)
+    }
+
+    @Transactional
+    fun update(id: Long, request: UpdateMarketRequest): MarketResponse {
+        val market = marketRepository.findByIdOrNull(id)
+            ?: throw MarketNotFoundException(id)
+
+        market.update(request.name, request.description)
+        return MarketResponse.from(market)
+    }
+
+    @Transactional
+    fun delete(id: Long) {
+        if (!marketRepository.existsById(id)) {
+            throw MarketNotFoundException(id)
+        }
+        marketRepository.deleteById(id)
+    }
+}
+```
+
+### Repository 계층
+
+```kotlin
+interface MarketRepository : JpaRepository<Market, Long> {
+    fun findByStatus(status: MarketStatus, pageable: Pageable): Page<Market>
+    fun findByNameContainingIgnoreCase(name: String): List<Market>
+    fun existsBySlug(slug: String): Boolean
+
+    @Query("""
+        SELECT m FROM Market m
+        WHERE m.status = :status
+        AND m.endDate > :now
+        ORDER BY m.volume DESC
+    """)
+    fun findActiveMarkets(
+        @Param("status") status: MarketStatus,
+        @Param("now") now: LocalDateTime,
+        pageable: Pageable
+    ): Page<Market>
+}
+```
+
+## 데이터베이스 패턴
+
+### N+1 쿼리 방지
+
+```kotlin
+// ❌ 잘못된 예: N+1 쿼리 문제
+val markets = marketRepository.findAll()
+markets.forEach { market ->
+    market.creator  // 각 마켓마다 추가 쿼리
 }
 
-// SQL function in Supabase
-CREATE OR REPLACE FUNCTION create_market_with_position(
-  market_data jsonb,
-  position_data jsonb
+// ✅ 올바른 예: Fetch Join
+@Query("SELECT m FROM Market m JOIN FETCH m.creator")
+fun findAllWithCreator(): List<Market>
+
+// ✅ 또는: @EntityGraph
+@EntityGraph(attributePaths = ["creator"])
+fun findAll(): List<Market>
+```
+
+### QueryDSL 동적 쿼리
+
+```kotlin
+@Repository
+class MarketQueryRepository(
+    private val queryFactory: JPAQueryFactory
+) {
+    private val market = QMarket.market
+
+    fun search(criteria: MarketSearchCriteria): Page<Market> {
+        val content = queryFactory
+            .selectFrom(market)
+            .where(
+                statusEquals(criteria.status),
+                nameContains(criteria.name),
+                createdAfter(criteria.createdAfter)
+            )
+            .orderBy(market.createdAt.desc())
+            .offset(criteria.pageable.offset)
+            .limit(criteria.pageable.pageSize.toLong())
+            .fetch()
+
+        val total = queryFactory
+            .select(market.count())
+            .from(market)
+            .where(
+                statusEquals(criteria.status),
+                nameContains(criteria.name),
+                createdAfter(criteria.createdAfter)
+            )
+            .fetchOne() ?: 0L
+
+        return PageImpl(content, criteria.pageable, total)
+    }
+
+    private fun statusEquals(status: MarketStatus?) =
+        status?.let { market.status.eq(it) }
+
+    private fun nameContains(name: String?) =
+        name?.let { market.name.containsIgnoreCase(it) }
+
+    private fun createdAfter(date: LocalDateTime?) =
+        date?.let { market.createdAt.goe(it) }
+}
+```
+
+### 트랜잭션 관리
+
+```kotlin
+@Service
+@Transactional(readOnly = true)
+class OrderService(
+    private val orderRepository: OrderRepository,
+    private val productService: ProductService
+) {
+    @Transactional
+    fun createOrder(request: CreateOrderRequest): OrderResponse {
+        // 재고 확인 및 감소
+        val product = productService.decreaseStock(
+            request.productId,
+            request.quantity
+        )
+
+        // 주문 생성
+        val order = Order(
+            productId = request.productId,
+            quantity = request.quantity,
+            totalPrice = product.price * request.quantity
+        )
+
+        return OrderResponse.from(orderRepository.save(order))
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun processPayment(orderId: Long): PaymentResult {
+        // 별도 트랜잭션에서 결제 처리
+    }
+}
+```
+
+## 캐싱 전략
+
+### Spring Cache
+
+```kotlin
+@Configuration
+@EnableCaching
+class CacheConfig {
+    @Bean
+    fun cacheManager(): CacheManager {
+        return CaffeineCacheManager().apply {
+            setCaffeine(
+                Caffeine.newBuilder()
+                    .maximumSize(1000)
+                    .expireAfterWrite(Duration.ofMinutes(10))
+            )
+        }
+    }
+}
+
+@Service
+class MarketService(
+    private val marketRepository: MarketRepository
+) {
+    @Cacheable(value = ["markets"], key = "#id")
+    fun findById(id: Long): MarketResponse {
+        val market = marketRepository.findByIdOrNull(id)
+            ?: throw MarketNotFoundException(id)
+        return MarketResponse.from(market)
+    }
+
+    @CacheEvict(value = ["markets"], key = "#id")
+    @Transactional
+    fun update(id: Long, request: UpdateMarketRequest): MarketResponse {
+        // 업데이트 로직
+    }
+
+    @CacheEvict(value = ["markets"], allEntries = true)
+    @Transactional
+    fun refreshAllMarkets() {
+        // 전체 캐시 무효화
+    }
+}
+```
+
+### Redis 캐시
+
+```kotlin
+@Configuration
+class RedisConfig {
+    @Bean
+    fun redisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, Any> {
+        return RedisTemplate<String, Any>().apply {
+            setConnectionFactory(connectionFactory)
+            keySerializer = StringRedisSerializer()
+            valueSerializer = GenericJackson2JsonRedisSerializer()
+        }
+    }
+}
+
+@Service
+class CachedMarketService(
+    private val marketRepository: MarketRepository,
+    private val redisTemplate: RedisTemplate<String, Any>
+) {
+    companion object {
+        private const val CACHE_KEY_PREFIX = "market:"
+        private val CACHE_TTL = Duration.ofMinutes(10)
+    }
+
+    fun findById(id: Long): MarketResponse {
+        val cacheKey = "$CACHE_KEY_PREFIX$id"
+
+        // 캐시 확인
+        val cached = redisTemplate.opsForValue().get(cacheKey)
+        if (cached != null) {
+            return cached as MarketResponse
+        }
+
+        // DB 조회
+        val market = marketRepository.findByIdOrNull(id)
+            ?: throw MarketNotFoundException(id)
+        val response = MarketResponse.from(market)
+
+        // 캐시 저장
+        redisTemplate.opsForValue().set(cacheKey, response, CACHE_TTL)
+
+        return response
+    }
+}
+```
+
+## 에러 처리 패턴
+
+### 전역 예외 핸들러
+
+```kotlin
+@RestControllerAdvice
+class GlobalExceptionHandler {
+
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    @ExceptionHandler(BusinessException::class)
+    fun handleBusinessException(e: BusinessException): ResponseEntity<ErrorResponse> {
+        log.warn("비즈니스 예외: ${e.message}")
+        return ResponseEntity
+            .status(e.errorCode.status)
+            .body(ErrorResponse(e.errorCode.name, e.message))
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidationException(
+        e: MethodArgumentNotValidException
+    ): ResponseEntity<ErrorResponse> {
+        val errors = e.bindingResult.fieldErrors
+            .associate { it.field to (it.defaultMessage ?: "Invalid") }
+
+        return ResponseEntity
+            .badRequest()
+            .body(ErrorResponse("VALIDATION_ERROR", "입력값 검증 실패", errors))
+    }
+
+    @ExceptionHandler(Exception::class)
+    fun handleException(e: Exception): ResponseEntity<ErrorResponse> {
+        log.error("예상치 못한 에러", e)
+        return ResponseEntity
+            .internalServerError()
+            .body(ErrorResponse("INTERNAL_ERROR", "서버 오류가 발생했습니다"))
+    }
+}
+```
+
+## 비동기 처리
+
+### 이벤트 기반 처리
+
+```kotlin
+// 이벤트 정의
+data class OrderCreatedEvent(
+    val orderId: Long,
+    val userId: Long
 )
-RETURNS jsonb
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  -- Start transaction automatically
-  INSERT INTO markets VALUES (market_data);
-  INSERT INTO positions VALUES (position_data);
-  RETURN jsonb_build_object('success', true);
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Rollback happens automatically
-    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
-```
 
-## Caching Strategies
+// 이벤트 발행
+@Service
+class OrderService(
+    private val eventPublisher: ApplicationEventPublisher
+) {
+    @Transactional
+    fun create(request: CreateOrderRequest): OrderResponse {
+        val order = orderRepository.save(Order(...))
 
-### Redis Caching Layer
+        // 트랜잭션 커밋 후 이벤트 발행
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+                override fun afterCommit() {
+                    eventPublisher.publishEvent(
+                        OrderCreatedEvent(order.id!!, order.userId)
+                    )
+                }
+            }
+        )
 
-```typescript
-class CachedMarketRepository implements MarketRepository {
-  constructor(
-    private baseRepo: MarketRepository,
-    private redis: RedisClient
-  ) {}
-
-  async findById(id: string): Promise<Market | null> {
-    // Check cache first
-    const cached = await this.redis.get(`market:${id}`)
-
-    if (cached) {
-      return JSON.parse(cached)
+        return OrderResponse.from(order)
     }
+}
 
-    // Cache miss - fetch from database
-    const market = await this.baseRepo.findById(id)
-
-    if (market) {
-      // Cache for 5 minutes
-      await this.redis.setex(`market:${id}`, 300, JSON.stringify(market))
+// 이벤트 리스너
+@Component
+class OrderEventListener(
+    private val notificationService: NotificationService
+) {
+    @Async
+    @EventListener
+    fun handleOrderCreated(event: OrderCreatedEvent) {
+        notificationService.sendOrderConfirmation(event.orderId)
     }
-
-    return market
-  }
-
-  async invalidateCache(id: string): Promise<void> {
-    await this.redis.del(`market:${id}`)
-  }
 }
 ```
 
-### Cache-Aside Pattern
-
-```typescript
-async function getMarketWithCache(id: string): Promise<Market> {
-  const cacheKey = `market:${id}`
-
-  // Try cache
-  const cached = await redis.get(cacheKey)
-  if (cached) return JSON.parse(cached)
-
-  // Cache miss - fetch from DB
-  const market = await db.markets.findUnique({ where: { id } })
-
-  if (!market) throw new Error('Market not found')
-
-  // Update cache
-  await redis.setex(cacheKey, 300, JSON.stringify(market))
-
-  return market
-}
-```
-
-## Error Handling Patterns
-
-### Centralized Error Handler
-
-```typescript
-class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    public message: string,
-    public isOperational = true
-  ) {
-    super(message)
-    Object.setPrototypeOf(this, ApiError.prototype)
-  }
-}
-
-export function errorHandler(error: unknown, req: Request): Response {
-  if (error instanceof ApiError) {
-    return NextResponse.json({
-      success: false,
-      error: error.message
-    }, { status: error.statusCode })
-  }
-
-  if (error instanceof z.ZodError) {
-    return NextResponse.json({
-      success: false,
-      error: 'Validation failed',
-      details: error.errors
-    }, { status: 400 })
-  }
-
-  // Log unexpected errors
-  console.error('Unexpected error:', error)
-
-  return NextResponse.json({
-    success: false,
-    error: 'Internal server error'
-  }, { status: 500 })
-}
-
-// Usage
-export async function GET(request: Request) {
-  try {
-    const data = await fetchData()
-    return NextResponse.json({ success: true, data })
-  } catch (error) {
-    return errorHandler(error, request)
-  }
-}
-```
-
-### Retry with Exponential Backoff
-
-```typescript
-async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3
-): Promise<T> {
-  let lastError: Error
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error as Error
-
-      if (i < maxRetries - 1) {
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = Math.pow(2, i) * 1000
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-
-  throw lastError!
-}
-
-// Usage
-const data = await fetchWithRetry(() => fetchFromAPI())
-```
-
-## Authentication & Authorization
-
-### JWT Token Validation
-
-```typescript
-import jwt from 'jsonwebtoken'
-
-interface JWTPayload {
-  userId: string
-  email: string
-  role: 'admin' | 'user'
-}
-
-export function verifyToken(token: string): JWTPayload {
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
-    return payload
-  } catch (error) {
-    throw new ApiError(401, 'Invalid token')
-  }
-}
-
-export async function requireAuth(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-
-  if (!token) {
-    throw new ApiError(401, 'Missing authorization token')
-  }
-
-  return verifyToken(token)
-}
-
-// Usage in API route
-export async function GET(request: Request) {
-  const user = await requireAuth(request)
-
-  const data = await getDataForUser(user.userId)
-
-  return NextResponse.json({ success: true, data })
-}
-```
-
-### Role-Based Access Control
-
-```typescript
-type Permission = 'read' | 'write' | 'delete' | 'admin'
-
-interface User {
-  id: string
-  role: 'admin' | 'moderator' | 'user'
-}
-
-const rolePermissions: Record<User['role'], Permission[]> = {
-  admin: ['read', 'write', 'delete', 'admin'],
-  moderator: ['read', 'write', 'delete'],
-  user: ['read', 'write']
-}
-
-export function hasPermission(user: User, permission: Permission): boolean {
-  return rolePermissions[user.role].includes(permission)
-}
-
-export function requirePermission(permission: Permission) {
-  return async (request: Request) => {
-    const user = await requireAuth(request)
-
-    if (!hasPermission(user, permission)) {
-      throw new ApiError(403, 'Insufficient permissions')
-    }
-
-    return user
-  }
-}
-
-// Usage
-export const DELETE = requirePermission('delete')(async (request: Request) => {
-  // Handler with permission check
-})
-```
-
-## Rate Limiting
-
-### Simple In-Memory Rate Limiter
-
-```typescript
-class RateLimiter {
-  private requests = new Map<string, number[]>()
-
-  async checkLimit(
-    identifier: string,
-    maxRequests: number,
-    windowMs: number
-  ): Promise<boolean> {
-    const now = Date.now()
-    const requests = this.requests.get(identifier) || []
-
-    // Remove old requests outside window
-    const recentRequests = requests.filter(time => now - time < windowMs)
-
-    if (recentRequests.length >= maxRequests) {
-      return false  // Rate limit exceeded
-    }
-
-    // Add current request
-    recentRequests.push(now)
-    this.requests.set(identifier, recentRequests)
-
-    return true
-  }
-}
-
-const limiter = new RateLimiter()
-
-export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
-
-  const allowed = await limiter.checkLimit(ip, 100, 60000)  // 100 req/min
-
-  if (!allowed) {
-    return NextResponse.json({
-      error: 'Rate limit exceeded'
-    }, { status: 429 })
-  }
-
-  // Continue with request
-}
-```
-
-## Background Jobs & Queues
-
-### Simple Queue Pattern
-
-```typescript
-class JobQueue<T> {
-  private queue: T[] = []
-  private processing = false
-
-  async add(job: T): Promise<void> {
-    this.queue.push(job)
-
-    if (!this.processing) {
-      this.process()
-    }
-  }
-
-  private async process(): Promise<void> {
-    this.processing = true
-
-    while (this.queue.length > 0) {
-      const job = this.queue.shift()!
-
-      try {
-        await this.execute(job)
-      } catch (error) {
-        console.error('Job failed:', error)
-      }
-    }
-
-    this.processing = false
-  }
-
-  private async execute(job: T): Promise<void> {
-    // Job execution logic
-  }
-}
-
-// Usage for indexing markets
-interface IndexJob {
-  marketId: string
-}
-
-const indexQueue = new JobQueue<IndexJob>()
-
-export async function POST(request: Request) {
-  const { marketId } = await request.json()
-
-  // Add to queue instead of blocking
-  await indexQueue.add({ marketId })
-
-  return NextResponse.json({ success: true, message: 'Job queued' })
-}
-```
-
-## Logging & Monitoring
-
-### Structured Logging
-
-```typescript
-interface LogContext {
-  userId?: string
-  requestId?: string
-  method?: string
-  path?: string
-  [key: string]: unknown
-}
-
-class Logger {
-  log(level: 'info' | 'warn' | 'error', message: string, context?: LogContext) {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      ...context
-    }
-
-    console.log(JSON.stringify(entry))
-  }
-
-  info(message: string, context?: LogContext) {
-    this.log('info', message, context)
-  }
-
-  warn(message: string, context?: LogContext) {
-    this.log('warn', message, context)
-  }
-
-  error(message: string, error: Error, context?: LogContext) {
-    this.log('error', message, {
-      ...context,
-      error: error.message,
-      stack: error.stack
-    })
-  }
-}
-
-const logger = new Logger()
-
-// Usage
-export async function GET(request: Request) {
-  const requestId = crypto.randomUUID()
-
-  logger.info('Fetching markets', {
-    requestId,
-    method: 'GET',
-    path: '/api/markets'
-  })
-
-  try {
-    const markets = await fetchMarkets()
-    return NextResponse.json({ success: true, data: markets })
-  } catch (error) {
-    logger.error('Failed to fetch markets', error as Error, { requestId })
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
-  }
-}
-```
-
-**Remember**: Backend patterns enable scalable, maintainable server-side applications. Choose patterns that fit your complexity level.
+**기억하세요**: 백엔드 패턴은 확장 가능하고 유지보수하기 쉬운 서버 사이드 애플리케이션을 가능하게 합니다. 복잡도 수준에 맞는 패턴을 선택하세요.

@@ -1,55 +1,58 @@
-# Common Patterns
+# 일반적인 패턴
 
-## API Response Format
+## API 응답 형식
 
-```typescript
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  meta?: {
-    total: number
-    page: number
-    limit: number
-  }
+```kotlin
+data class ApiResponse<T>(
+    val success: Boolean,
+    val data: T? = null,
+    val error: String? = null,
+    val meta: Meta? = null
+)
+
+data class Meta(
+    val total: Int,
+    val page: Int,
+    val limit: Int
+)
+```
+
+## 커스텀 훅 패턴
+
+```kotlin
+// Debounce를 사용한 검색
+fun <T> useDebounce(value: T, delayMs: Long): T {
+    var debouncedValue by remember { mutableStateOf(value) }
+
+    LaunchedEffect(value) {
+        delay(delayMs)
+        debouncedValue = value
+    }
+
+    return debouncedValue
 }
 ```
 
-## Custom Hooks Pattern
+## Repository 패턴
 
-```typescript
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay)
-    return () => clearTimeout(handler)
-  }, [value, delay])
-
-  return debouncedValue
+```kotlin
+interface Repository<T, ID> {
+    fun findAll(filters: Filters? = null): List<T>
+    fun findById(id: ID): T?
+    fun create(data: CreateDto): T
+    fun update(id: ID, data: UpdateDto): T
+    fun delete(id: ID)
 }
 ```
 
-## Repository Pattern
+## 스켈레톤 프로젝트
 
-```typescript
-interface Repository<T> {
-  findAll(filters?: Filters): Promise<T[]>
-  findById(id: string): Promise<T | null>
-  create(data: CreateDto): Promise<T>
-  update(id: string, data: UpdateDto): Promise<T>
-  delete(id: string): Promise<void>
-}
-```
-
-## Skeleton Projects
-
-When implementing new functionality:
-1. Search for battle-tested skeleton projects
-2. Use parallel agents to evaluate options:
-   - Security assessment
-   - Extensibility analysis
-   - Relevance scoring
-   - Implementation planning
-3. Clone best match as foundation
-4. Iterate within proven structure
+새 기능 구현 시:
+1. 검증된 스켈레톤 프로젝트 검색
+2. 병렬 에이전트로 옵션 평가:
+   - 보안 평가
+   - 확장성 분석
+   - 관련성 점수
+   - 구현 계획
+3. 최적의 매치를 기반으로 클론
+4. 검증된 구조 내에서 반복

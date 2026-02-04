@@ -1,494 +1,184 @@
 ---
 name: security-review
-description: Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.
+description: 인증 추가, 사용자 입력 처리, 비밀 작업, API 엔드포인트 생성, 결제/민감한 기능 구현 시 이 스킬을 사용하세요. 포괄적인 보안 체크리스트와 패턴을 제공합니다.
 ---
 
-# Security Review Skill
+# 보안 리뷰 스킬
 
-This skill ensures all code follows security best practices and identifies potential vulnerabilities.
+이 스킬은 모든 코드가 보안 모범 사례를 따르고 잠재적 취약점을 식별하도록 보장합니다.
 
-## When to Activate
+## 활성화 시점
 
-- Implementing authentication or authorization
-- Handling user input or file uploads
-- Creating new API endpoints
-- Working with secrets or credentials
-- Implementing payment features
-- Storing or transmitting sensitive data
-- Integrating third-party APIs
+- 인증 또는 인가 구현
+- 사용자 입력 또는 파일 업로드 처리
+- 새 API 엔드포인트 생성
+- 비밀 또는 자격증명 작업
+- 결제 기능 구현
+- 민감한 데이터 저장 또는 전송
+- 서드파티 API 통합
 
-## Security Checklist
+## 보안 체크리스트
 
-### 1. Secrets Management
+### 1. 비밀 관리
 
-#### ❌ NEVER Do This
-```typescript
-const apiKey = "sk-proj-xxxxx"  // Hardcoded secret
-const dbPassword = "password123" // In source code
+#### ❌ 절대 하지 말 것
+```kotlin
+val apiKey = "sk-proj-xxxxx"  // 하드코딩된 비밀
+val dbPassword = "password123" // 소스 코드에
 ```
 
-#### ✅ ALWAYS Do This
-```typescript
-const apiKey = process.env.OPENAI_API_KEY
-const dbUrl = process.env.DATABASE_URL
+#### ✅ 항상 할 것
+```kotlin
+val apiKey = System.getenv("OPENAI_API_KEY")
+val dbUrl = System.getenv("DATABASE_URL")
 
-// Verify secrets exist
-if (!apiKey) {
-  throw new Error('OPENAI_API_KEY not configured')
+// 비밀 존재 확인
+if (apiKey.isNullOrBlank()) {
+    throw IllegalStateException("OPENAI_API_KEY가 설정되지 않았습니다")
 }
 ```
 
-#### Verification Steps
-- [ ] No hardcoded API keys, tokens, or passwords
-- [ ] All secrets in environment variables
-- [ ] `.env.local` in .gitignore
-- [ ] No secrets in git history
-- [ ] Production secrets in hosting platform (Vercel, Railway)
+#### 확인 단계
+- [ ] 하드코딩된 API 키, 토큰, 비밀번호 없음
+- [ ] 모든 비밀이 환경 변수에
+- [ ] application-local.yml이 .gitignore에
+- [ ] git 히스토리에 비밀 없음
+- [ ] 프로덕션 비밀은 호스팅 플랫폼에
 
-### 2. Input Validation
+### 2. 입력 검증
 
-#### Always Validate User Input
-```typescript
-import { z } from 'zod'
+#### 항상 사용자 입력 검증
+```kotlin
+data class CreateUserRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
 
-// Define validation schema
-const CreateUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-  age: z.number().int().min(0).max(150)
-})
-
-// Validate before processing
-export async function createUser(input: unknown) {
-  try {
-    const validated = CreateUserSchema.parse(input)
-    return await db.users.create(validated)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { success: false, errors: error.errors }
-    }
-    throw error
-  }
-}
-```
-
-#### File Upload Validation
-```typescript
-function validateFileUpload(file: File) {
-  // Size check (5MB max)
-  const maxSize = 5 * 1024 * 1024
-  if (file.size > maxSize) {
-    throw new Error('File too large (max 5MB)')
-  }
-
-  // Type check
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Invalid file type')
-  }
-
-  // Extension check
-  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif']
-  const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0]
-  if (!extension || !allowedExtensions.includes(extension)) {
-    throw new Error('Invalid file extension')
-  }
-
-  return true
-}
-```
-
-#### Verification Steps
-- [ ] All user inputs validated with schemas
-- [ ] File uploads restricted (size, type, extension)
-- [ ] No direct use of user input in queries
-- [ ] Whitelist validation (not blacklist)
-- [ ] Error messages don't leak sensitive info
-
-### 3. SQL Injection Prevention
-
-#### ❌ NEVER Concatenate SQL
-```typescript
-// DANGEROUS - SQL Injection vulnerability
-const query = `SELECT * FROM users WHERE email = '${userEmail}'`
-await db.query(query)
-```
-
-#### ✅ ALWAYS Use Parameterized Queries
-```typescript
-// Safe - parameterized query
-const { data } = await supabase
-  .from('users')
-  .select('*')
-  .eq('email', userEmail)
-
-// Or with raw SQL
-await db.query(
-  'SELECT * FROM users WHERE email = $1',
-  [userEmail]
+    @field:NotBlank(message = "비밀번호는 필수입니다")
+    @field:Size(min = 8, message = "비밀번호는 8자 이상이어야 합니다")
+    val password: String
 )
-```
 
-#### Verification Steps
-- [ ] All database queries use parameterized queries
-- [ ] No string concatenation in SQL
-- [ ] ORM/query builder used correctly
-- [ ] Supabase queries properly sanitized
-
-### 4. Authentication & Authorization
-
-#### JWT Token Handling
-```typescript
-// ❌ WRONG: localStorage (vulnerable to XSS)
-localStorage.setItem('token', token)
-
-// ✅ CORRECT: httpOnly cookies
-res.setHeader('Set-Cookie',
-  `token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=3600`)
-```
-
-#### Authorization Checks
-```typescript
-export async function deleteUser(userId: string, requesterId: string) {
-  // ALWAYS verify authorization first
-  const requester = await db.users.findUnique({
-    where: { id: requesterId }
-  })
-
-  if (requester.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 403 }
-    )
-  }
-
-  // Proceed with deletion
-  await db.users.delete({ where: { id: userId } })
+// 컨트롤러에서 @Valid 사용
+@PostMapping
+fun create(@Valid @RequestBody request: CreateUserRequest) {
+    // ...
 }
 ```
 
-#### Row Level Security (Supabase)
-```sql
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+#### 확인 단계
+- [ ] 모든 사용자 입력이 스키마로 검증됨
+- [ ] 파일 업로드 제한됨 (크기, 타입, 확장자)
+- [ ] 쿼리에 사용자 입력 직접 사용하지 않음
+- [ ] 화이트리스트 검증 (블랙리스트 아님)
 
--- Users can only view their own data
-CREATE POLICY "Users view own data"
-  ON users FOR SELECT
-  USING (auth.uid() = id);
+### 3. SQL 인젝션 방지
 
--- Users can only update their own data
-CREATE POLICY "Users update own data"
-  ON users FOR UPDATE
-  USING (auth.uid() = id);
+#### ❌ 절대 SQL 연결하지 말 것
+```kotlin
+// 위험 - SQL 인젝션 취약점
+val query = "SELECT * FROM users WHERE email = '$userEmail'"
 ```
 
-#### Verification Steps
-- [ ] Tokens stored in httpOnly cookies (not localStorage)
-- [ ] Authorization checks before sensitive operations
-- [ ] Row Level Security enabled in Supabase
-- [ ] Role-based access control implemented
-- [ ] Session management secure
+#### ✅ 항상 파라미터화된 쿼리 사용
+```kotlin
+// 안전 - jOOQ 사용
+dsl.selectFrom(USERS)
+    .where(USERS.EMAIL.eq(userEmail))
+    .fetchOne()
 
-### 5. XSS Prevention
-
-#### Sanitize HTML
-```typescript
-import DOMPurify from 'isomorphic-dompurify'
-
-// ALWAYS sanitize user-provided HTML
-function renderUserContent(html: string) {
-  const clean = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p'],
-    ALLOWED_ATTR: []
-  })
-  return <div dangerouslySetInnerHTML={{ __html: clean }} />
-}
+// 안전 - JPA
+@Query("SELECT u FROM User u WHERE u.email = :email")
+fun findByEmail(@Param("email") email: String): User?
 ```
 
-#### Content Security Policy
-```typescript
-// next.config.js
-const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: `
-      default-src 'self';
-      script-src 'self' 'unsafe-eval' 'unsafe-inline';
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https:;
-      font-src 'self';
-      connect-src 'self' https://api.example.com;
-    `.replace(/\s{2,}/g, ' ').trim()
-  }
-]
-```
+### 4. 인증 및 인가
 
-#### Verification Steps
-- [ ] User-provided HTML sanitized
-- [ ] CSP headers configured
-- [ ] No unvalidated dynamic content rendering
-- [ ] React's built-in XSS protection used
-
-### 6. CSRF Protection
-
-#### CSRF Tokens
-```typescript
-import { csrf } from '@/lib/csrf'
-
-export async function POST(request: Request) {
-  const token = request.headers.get('X-CSRF-Token')
-
-  if (!csrf.verify(token)) {
-    return NextResponse.json(
-      { error: 'Invalid CSRF token' },
-      { status: 403 }
-    )
-  }
-
-  // Process request
-}
-```
-
-#### SameSite Cookies
-```typescript
-res.setHeader('Set-Cookie',
-  `session=${sessionId}; HttpOnly; Secure; SameSite=Strict`)
-```
-
-#### Verification Steps
-- [ ] CSRF tokens on state-changing operations
-- [ ] SameSite=Strict on all cookies
-- [ ] Double-submit cookie pattern implemented
-
-### 7. Rate Limiting
-
-#### API Rate Limiting
-```typescript
-import rateLimit from 'express-rate-limit'
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
-  message: 'Too many requests'
-})
-
-// Apply to routes
-app.use('/api/', limiter)
-```
-
-#### Expensive Operations
-```typescript
-// Aggressive rate limiting for searches
-const searchLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 requests per minute
-  message: 'Too many search requests'
-})
-
-app.use('/api/search', searchLimiter)
-```
-
-#### Verification Steps
-- [ ] Rate limiting on all API endpoints
-- [ ] Stricter limits on expensive operations
-- [ ] IP-based rate limiting
-- [ ] User-based rate limiting (authenticated)
-
-### 8. Sensitive Data Exposure
-
-#### Logging
-```typescript
-// ❌ WRONG: Logging sensitive data
-console.log('User login:', { email, password })
-console.log('Payment:', { cardNumber, cvv })
-
-// ✅ CORRECT: Redact sensitive data
-console.log('User login:', { email, userId })
-console.log('Payment:', { last4: card.last4, userId })
-```
-
-#### Error Messages
-```typescript
-// ❌ WRONG: Exposing internal details
-catch (error) {
-  return NextResponse.json(
-    { error: error.message, stack: error.stack },
-    { status: 500 }
-  )
-}
-
-// ✅ CORRECT: Generic error messages
-catch (error) {
-  console.error('Internal error:', error)
-  return NextResponse.json(
-    { error: 'An error occurred. Please try again.' },
-    { status: 500 }
-  )
-}
-```
-
-#### Verification Steps
-- [ ] No passwords, tokens, or secrets in logs
-- [ ] Error messages generic for users
-- [ ] Detailed errors only in server logs
-- [ ] No stack traces exposed to users
-
-### 9. Blockchain Security (Solana)
-
-#### Wallet Verification
-```typescript
-import { verify } from '@solana/web3.js'
-
-async function verifyWalletOwnership(
-  publicKey: string,
-  signature: string,
-  message: string
-) {
-  try {
-    const isValid = verify(
-      Buffer.from(message),
-      Buffer.from(signature, 'base64'),
-      Buffer.from(publicKey, 'base64')
-    )
-    return isValid
-  } catch (error) {
-    return false
-  }
-}
-```
-
-#### Transaction Verification
-```typescript
-async function verifyTransaction(transaction: Transaction) {
-  // Verify recipient
-  if (transaction.to !== expectedRecipient) {
-    throw new Error('Invalid recipient')
-  }
-
-  // Verify amount
-  if (transaction.amount > maxAmount) {
-    throw new Error('Amount exceeds limit')
-  }
-
-  // Verify user has sufficient balance
-  const balance = await getBalance(transaction.from)
-  if (balance < transaction.amount) {
-    throw new Error('Insufficient balance')
-  }
-
-  return true
-}
-```
-
-#### Verification Steps
-- [ ] Wallet signatures verified
-- [ ] Transaction details validated
-- [ ] Balance checks before transactions
-- [ ] No blind transaction signing
-
-### 10. Dependency Security
-
-#### Regular Updates
-```bash
-# Check for vulnerabilities
-npm audit
-
-# Fix automatically fixable issues
-npm audit fix
-
-# Update dependencies
-npm update
-
-# Check for outdated packages
-npm outdated
-```
-
-#### Lock Files
-```bash
-# ALWAYS commit lock files
-git add package-lock.json
-
-# Use in CI/CD for reproducible builds
-npm ci  # Instead of npm install
-```
-
-#### Verification Steps
-- [ ] Dependencies up to date
-- [ ] No known vulnerabilities (npm audit clean)
-- [ ] Lock files committed
-- [ ] Dependabot enabled on GitHub
-- [ ] Regular security updates
-
-## Security Testing
-
-### Automated Security Tests
-```typescript
-// Test authentication
-test('requires authentication', async () => {
-  const response = await fetch('/api/protected')
-  expect(response.status).toBe(401)
-})
-
-// Test authorization
-test('requires admin role', async () => {
-  const response = await fetch('/api/admin', {
-    headers: { Authorization: `Bearer ${userToken}` }
-  })
-  expect(response.status).toBe(403)
-})
-
-// Test input validation
-test('rejects invalid input', async () => {
-  const response = await fetch('/api/users', {
-    method: 'POST',
-    body: JSON.stringify({ email: 'not-an-email' })
-  })
-  expect(response.status).toBe(400)
-})
-
-// Test rate limiting
-test('enforces rate limits', async () => {
-  const requests = Array(101).fill(null).map(() =>
-    fetch('/api/endpoint')
-  )
-
-  const responses = await Promise.all(requests)
-  const tooManyRequests = responses.filter(r => r.status === 429)
-
-  expect(tooManyRequests.length).toBeGreaterThan(0)
+#### JWT 토큰 처리
+```kotlin
+// ❌ 잘못됨: localStorage (XSS에 취약)
+// ✅ 올바름: httpOnly 쿠키
+response.addCookie(Cookie("token", token).apply {
+    isHttpOnly = true
+    secure = true
+    path = "/"
+    maxAge = 3600
 })
 ```
 
-## Pre-Deployment Security Checklist
+#### 인가 검사
+```kotlin
+@GetMapping("/api/user/{id}")
+@PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+fun getUser(@PathVariable id: Long): UserResponse {
+    // ...
+}
+```
 
-Before ANY production deployment:
+### 5. 속도 제한
 
-- [ ] **Secrets**: No hardcoded secrets, all in env vars
-- [ ] **Input Validation**: All user inputs validated
-- [ ] **SQL Injection**: All queries parameterized
-- [ ] **XSS**: User content sanitized
-- [ ] **CSRF**: Protection enabled
-- [ ] **Authentication**: Proper token handling
-- [ ] **Authorization**: Role checks in place
-- [ ] **Rate Limiting**: Enabled on all endpoints
-- [ ] **HTTPS**: Enforced in production
-- [ ] **Security Headers**: CSP, X-Frame-Options configured
-- [ ] **Error Handling**: No sensitive data in errors
-- [ ] **Logging**: No sensitive data logged
-- [ ] **Dependencies**: Up to date, no vulnerabilities
-- [ ] **Row Level Security**: Enabled in Supabase
-- [ ] **CORS**: Properly configured
-- [ ] **File Uploads**: Validated (size, type)
-- [ ] **Wallet Signatures**: Verified (if blockchain)
+```kotlin
+@Configuration
+class RateLimitConfig {
+    @Bean
+    fun rateLimiter(): RateLimiter = RateLimiter.builder()
+        .limit(100)
+        .window(Duration.ofMinutes(1))
+        .build()
+}
 
-## Resources
+@PostMapping("/api/search")
+@RateLimiter(name = "search", fallbackMethod = "searchFallback")
+fun search(@RequestBody request: SearchRequest): SearchResponse {
+    // ...
+}
+```
+
+### 6. 민감한 데이터 노출
+
+#### 로깅
+```kotlin
+// ❌ 잘못됨: 민감한 데이터 로깅
+logger.info("User login: email=$email, password=$password")
+
+// ✅ 올바름: 로그 정제
+logger.info("User login: userId=$userId")
+```
+
+#### 에러 메시지
+```kotlin
+// ❌ 잘못됨: 내부 세부사항 노출
+catch (e: Exception) {
+    throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.message)
+}
+
+// ✅ 올바름: 일반 에러 메시지
+catch (e: Exception) {
+    logger.error("Internal error", e)
+    throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "오류가 발생했습니다")
+}
+```
+
+## 배포 전 보안 체크리스트
+
+모든 프로덕션 배포 전:
+
+- [ ] **비밀**: 하드코딩된 비밀 없음, 모두 환경 변수에
+- [ ] **입력 검증**: 모든 사용자 입력 검증됨
+- [ ] **SQL 인젝션**: 모든 쿼리 파라미터화됨
+- [ ] **인증**: 올바른 토큰 처리
+- [ ] **인가**: 역할 검사 적용됨
+- [ ] **속도 제한**: 모든 엔드포인트에 활성화됨
+- [ ] **HTTPS**: 프로덕션에서 강제됨
+- [ ] **에러 처리**: 로그에 민감한 데이터 없음
+- [ ] **의존성**: 최신, 취약점 없음
+
+## 리소스
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [Next.js Security](https://nextjs.org/docs/security)
-- [Supabase Security](https://supabase.com/docs/guides/auth)
-- [Web Security Academy](https://portswigger.net/web-security)
+- [Spring Security 문서](https://spring.io/projects/spring-security)
+- [Kotlin 보안 가이드](https://kotlinlang.org/docs/security.html)
 
 ---
 
-**Remember**: Security is not optional. One vulnerability can compromise the entire platform. When in doubt, err on the side of caution.
+**기억**: 보안은 선택 사항이 아닙니다. 하나의 취약점이 전체 플랫폼을 위험에 빠뜨릴 수 있습니다. 확신이 없으면 주의 쪽으로 기울이세요.
