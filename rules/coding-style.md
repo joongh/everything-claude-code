@@ -111,6 +111,45 @@ val saved = repository.save(user).also {
 }
 ```
 
+## 클래스 배치 (Nested vs File-level)
+
+Kotlin에서는 파일 레벨 선언을 우선:
+
+```kotlin
+// ❌ 잘못된 예: 단순 홀더/결과 타입을 클래스 내부에 중첩
+class SomeService {
+    fun process(): WaitResult { ... }
+
+    private data class WaitResult(val success: Boolean, val message: String)
+}
+
+// ✅ 올바른 예: 파일 레벨 private으로 선언
+private data class WaitResult(val success: Boolean, val message: String)
+
+class SomeService {
+    fun process(): WaitResult { ... }
+}
+
+// ✅ 올바른 예: 공개 DTO는 별도 파일로 분리
+// SomeDto.kt
+data class SomeResponse(val id: String, val name: String)
+
+// SomeController.kt
+class SomeController {
+    fun get(): SomeResponse { ... }
+}
+```
+
+**중첩이 적절한 경우** (이 경우는 내부에 유지):
+- sealed class의 하위 타입 (`sealed class Result { data class Success : Result() }`)
+- 데이터 구조의 구성 요소 (`BillTimeline` 안의 `BillInfo`)
+- Builder, Factory 등 외부 클래스와 개념적으로 강하게 결합된 경우
+
+**파일 레벨로 빼야 하는 경우**:
+- 메서드 반환값 홀더 (Result, WaitResult 등) → 파일 레벨 `private`
+- API 요청/응답 DTO → 별도 파일 (예: `SomeDto.kt`)
+- 단순 데이터 전달 객체
+
 ## 코드 품질 체크리스트
 
 작업 완료 전 확인:
