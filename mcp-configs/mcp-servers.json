@@ -61,6 +61,14 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/projects"],
       "description": "Filesystem operations (set your path)"
+    },
+    "dooray": {
+      "command": "npx",
+      "args": ["-y", "@jhl8041/dooray-mcp@latest"],
+      "env": {
+        "DOORAY_API_TOKEN": "YOUR_DOORAY_API_TOKEN_HERE"
+      },
+      "description": "Dooray project management - tasks, comments, attachments, wiki"
     }
   },
   "_comments": {
