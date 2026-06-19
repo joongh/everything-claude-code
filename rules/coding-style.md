@@ -1,5 +1,18 @@
 # 코딩 스타일
 
+## 줄바꿈 (중요)
+
+모든 파일은 **LF (Unix)** 줄바꿈을 사용한다. CRLF (Windows)를 절대 사용하지 않는다.
+
+### 파일 편집 후 확인
+
+기존 파일을 편집한 직후에는 line ending이 CRLF로 바뀌었는지 확인한다.
+
+- 확인: `file <path>` 또는 `grep -c $'\r' <path>`
+- 복구: `perl -pi -e 's/\r\n/\n/g' <path>`
+
+편집 도구가 LF 파일을 CRLF로 바꿔버리는 경우가 있어 git diff에 줄바꿈 변경이 모든 줄에 노이즈로 잡힌다. 신규 생성(Write)은 보통 LF이므로 기존 파일 편집 후에만 확인하면 된다.
+
 ## 불변성 (중요)
 
 Kotlin data class와 val을 활용하여 불변성 유지:
