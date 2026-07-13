@@ -1,1 +1,0 @@
-/Users/nhn/work/src/nhncloud-iaas-mcp/claude_configs/rules/nhncloud-iaas.md
