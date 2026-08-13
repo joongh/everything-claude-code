@@ -30,6 +30,19 @@ https://{org}.dooray.com/project/{projectId}/posts/{postId}
 - `pageId`: 위키 페이지 고유 ID
 - 상태는 항상 `"publish"`
 
+**멤버 멘션:**
+```markdown
+[@{name}](dooray://{organizationId}/members/{organizationMemberId} "member")
+```
+- `organizationMemberId`: `get-project-member-list` / `get-my-member-info` 응답의 `organizationMemberId`
+- 타이틀은 항상 `"member"` (조회 시 자기 자신은 `"me"`로 표시되지만, 작성할 때는 `"member"`를 쓴다)
+- 예: `[@양성연](dooray://1387695619080878080/members/4131706313960528971 "member") 전임님, 추가 질문 있습니다.`
+
+**⚠️ 평문 `@이름`은 멘션이 아니다.** 그냥 텍스트로 남아 상대방에게 알림이 가지 않는다. 태스크·위키·댓글에서 사람을 부를 때는 반드시 위 링크 형식을 쓴다.
+
+- 이름 뒤 호칭(전임님/책임님 등)은 링크 **밖에** 둔다
+- 상대의 `organizationMemberId`를 모르면 `get-project-member-list`로 조회한다. 같은 태스크의 기존 댓글을 `get-task-comment-list`로 읽어 거기 있는 멘션 링크를 그대로 재사용하는 것도 확실한 방법이다
+
 ## 워크플로우
 
 1. 사용자가 Dooray 링크 공유
@@ -37,6 +50,34 @@ https://{org}.dooray.com/project/{projectId}/posts/{postId}
 3. `get-task`로 태스크 본문 조회
 4. 필요시 `get-task-comment-list`로 댓글 확인
 5. 요청에 따라 태스크 수정 또는 댓글 작성
+
+## 수정 전 최신 내용 재조회 (중요)
+
+기존 태스크·위키·댓글을 **수정**하기 전에는 반드시 `get-*` 도구로 **원본을 다시 조회**한다. 세션 컨텍스트에 남아 있는 내용을 기준으로 수정하지 않는다.
+
+**이유**: 내가 생성/수정한 뒤에 사용자나 다른 사람이 Dooray에서 직접 제목·본문을 고쳤을 수 있다. 오래된 컨텍스트를 기준으로 `update-*`를 호출하면 그 수동 수정이 조용히 사라진다(덮어쓰기 유실).
+
+**수정 직전 재조회 필수:**
+
+| 수정 도구 | 재조회 도구 |
+|------|------|
+| `update-task` | `get-task` |
+| `update-task-comment` | `get-task-comment-list` |
+| `update-wiki-page` | `get-wiki-page` |
+| `update-wiki-page-comment` | `get-wiki-page-comment` |
+
+**절차:**
+1. `get-*`로 현재 원본(제목·본문) 조회
+2. 컨텍스트에 있던 내용과 비교
+   - 동일 → 그대로 수정 진행
+   - 다름 → **덮어쓰지 않는다.** 달라진 부분을 사용자에게 알리고, 사용자 수정분을 유지한 병합안을 만들어 확인받는다
+3. 재조회한 최신 본문을 기준으로 diff를 만들어 아래 "내용 입력/수정 시 확인 절차"를 진행한다
+
+**주의:**
+- 같은 세션에서 방금 내가 만든 태스크라도 예외 없이 재조회한다 (생성 직후 사용자가 손댔을 수 있음)
+- 상태·담당자 등 메타 필드만 바꾸는 경우에도, `update-task`가 본문을 함께 전송하는 구조이므로 재조회 필수
+- 재조회를 생략해도 되는 경우는 없다. 조회 1회 비용 < 유실된 사용자 수정 복구 비용
+- 새 내용 **작성**(`create-task`, `create-task-comment`, `create-wiki-page` 등)은 기존 내용을 덮어쓰지 않으므로 재조회 대상 아님
 
 ## 내용 입력/수정 시 확인 절차 (중요)
 
