@@ -29,6 +29,7 @@ PR 생성 시:
 2. `git diff [base-branch]...HEAD`로 모든 변경 확인
 3. PR 제목은 변경 내용을 한 문장으로 간결하게 작성
 4. 새 브랜치면 `-u` 플래그로 push
+5. PR을 만든 뒤 CodeOwl 리뷰를 백그라운드로 최대 10분 기다리고, 올라오면 대응한다 ([[codeowl-review]]의 "PR 생성 후 리뷰 대기")
 
 ### 브랜치 이름과 Dooray 연동
 
