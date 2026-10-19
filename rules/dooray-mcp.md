@@ -13,7 +13,10 @@ https://{org}.dooray.com/project/{projectId}/posts/{postId}
 
 태스크/위키 본문에 Dooray 리소스 링크를 작성할 때는 웹 URL이 아닌 **Dooray 내부 링크 형식**을 사용해야 한다.
 
-**organizationId**: `get-project` 응답의 `organization.id` 값. 세션에서 한번 조회 후 캐시하여 재사용한다.
+**organizationId**: `1387695619080878080` (NHN 조직). `get-project` 응답의 `organization.id`(`3234962574780345705` 등)는 **틀린 값**이다.
+
+- 틀린 값을 보내도 Dooray 가 저장할 때 맞는 값으로 바꿔 줘서 링크는 동작한다. 그래서 틀린 줄 모르고 계속 쓰게 된다
+- 확인하려면 기존 태스크 본문·댓글의 링크나 멤버 멘션에 들어 있는 값을 본다
 
 **태스크 링크:**
 ```markdown
@@ -42,6 +45,35 @@ https://{org}.dooray.com/project/{projectId}/posts/{postId}
 
 - 이름 뒤 호칭(전임님/책임님 등)은 링크 **밖에** 둔다
 - 상대의 `organizationMemberId`를 모르면 `get-project-member-list`로 조회한다. 같은 태스크의 기존 댓글을 `get-task-comment-list`로 읽어 거기 있는 멘션 링크를 그대로 재사용하는 것도 확실한 방법이다
+
+## 태스크·PR 은 줄여 쓰지 말고 반드시 링크로 (중요)
+
+태스크·위키 본문과 댓글에서 다른 Dooray 태스크나 PR 을 가리킬 때는 **줄임 표기를 쓰지 않는다. 반드시 링크로 쓴다.** 어느 프로젝트든 같다.
+
+**Dooray 태스크**
+
+- `/165`, `#165`, `165번`, `cashier/165` 처럼 줄여 쓰지 않는다
+- `tc-iaas-compute-cashier/165` 처럼 번호를 평문으로만 쓰는 것도 안 된다
+- 위 "태스크 링크" 형식으로 쓴다: `[{taskNumber} {subject}](dooray://{organizationId}/tasks/{taskId} "{workflowClass}")`
+- 문장 중간에 지나가듯 말할 때도 같다
+- taskId·제목·상태를 모르면 `get-task-list`·`get-task` 로 조회해서 채운다. 추측해서 쓰지 않는다
+
+**PR**
+
+- `PR #133` 처럼 번호만 쓰지 않는다. 반드시 PR URL 을 링크로 단다
+- 형식: `[PR #133](https://github.nhnent.com/{owner}/{repo}/pull/133)`
+- 어느 리포의 PR 인지 모르면 `gh pr view` 로 확인하고 쓴다
+
+**예 (지양 → 지향):**
+
+```
+지양: /165 의 PR #133 이 깔아둔 배관을 재사용
+지향: [tc-iaas-compute-cashier/165 inspector: lifecycle-boundary start_mismatch 가 VOLUME 에서 created_at 을 기준으로 잡아 오탐](dooray://1387695619080878080/tasks/4443795565477469691 "closed") 의 [PR #133](https://github.nhnent.com/TOASTCloud/i.compute-cashier/pull/133) 이 깔아둔 배관을 재사용
+```
+
+**보여주기 전 점검:** 초안을 사용자에게 보여주기 전에 `/숫자`, `#숫자`, `PR #숫자` 가 링크 없이 남아 있는지 훑는다.
+
+- 근거: 2026-10-19 사용자 지시. 어느 프로젝트에서든 Dooray 태스크·댓글을 쓸 때 지킨다
 
 ## 워크플로우
 
@@ -135,6 +167,7 @@ Dooray에 내용을 입력하거나 수정하는 **모든 작업**은 실행 전
 
 - 관련 태스크는 하위 불릿 하나에 링크만 둔다. 내부 링크 형식에 전체 제목을 쓰고, 설명·배포 버전 같은 부연을 붙이지 않는다
 - 특정 댓글을 가리킬 땐 텍스트를 지어 붙이지 않고 URL을 그대로 쓴다
+- 태스크·PR 을 `/165`, `PR #133` 처럼 줄여 쓰지 않는다 → 위 "태스크·PR 은 줄여 쓰지 말고 반드시 링크로" 참고
 
 **예 (지양 → 지향):**
 
